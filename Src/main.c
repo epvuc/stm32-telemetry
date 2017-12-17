@@ -103,8 +103,8 @@ int main(void)
   int retry_count = 0;
   double batt;
   // these need to go in eeprom:
-  double batt_divider = 634.187;
-  char unit_id[3] = { 'Z', 'Y', '\0' };
+  double batt_divider = 1.000;
+  char unit_id[3] = { 'Z', '1', '\0' };
 
   /* USER CODE END 1 */
 
@@ -148,7 +148,7 @@ int main(void)
     bme280_once(bmebuf, 22);
     batt = raw / batt_divider;
     // 32 chars and still human-readable is a very tight fit.
-    snprintf(msgbuf, 32, "%s %s %.2f %u %x", unit_id, bmebuf, batt, (unsigned int)count++, retry_count);
+    snprintf(msgbuf, 32, "%s %s %.2f %u %x", unit_id, bmebuf, batt, (unsigned int)count++, retry_count & 0x0F);
     if (count==100) count=0;
     retry_count = send_radio_message(msgbuf,strlen(msgbuf));
     // Go to sleep until next reading.
