@@ -56,7 +56,8 @@ SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+#define EE_BATT_DIV_ADDR 0x0000
+#define EE_UNIT_ID_ADDR 0x0020
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,10 +103,11 @@ int main(void)
   uint32_t raw, count = 0;
   int retry_count = 0;
   double batt;
-  // these need to go in eeprom:
-  double batt_divider = 1.000;
-  char unit_id[3] = { 'Z', '1', '\0' };
-
+  // these need to to be set in eeprom, and have to be on aligned addresses!
+  // You can write them with the "l062test" firmware. The addresses need to be
+  // aligned on 32 bit boundaries or the cpu will hang trying to access them!
+  double batt_divider = *(double *)(EE_BATT_DIV_ADDR + DATA_EEPROM_BASE);
+  char *unit_id = (EE_UNIT_ID_ADDR + DATA_EEPROM_BASE);
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
