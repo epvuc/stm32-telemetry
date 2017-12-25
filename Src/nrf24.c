@@ -16,6 +16,14 @@
 #include "nrf24.h"
 #include "stm32l0xx_hal.h"
 
+// config settings stored in eeprom
+char *ee_nrf_addr = (char *)(DATA_EEPROM_BASE + 8); // 8 bytes long
+#define EE_NRF_CHAN (*(uint8_t *)(DATA_EEPROM_BASE + 18))
+#define EE_NRF_PIPE (*(uint8_t *)(DATA_EEPROM_BASE + 19))
+#define EE_NRF_BW   (*(uint8_t *)(DATA_EEPROM_BASE + 20))
+#define EE_NRF_RETRY_COUNT (*(uint8_t *)(DATA_EEPROM_BASE + 21))
+#define EE_NRF_RETRY_DELAY (*(uint8_t *)(DATA_EEPROM_BASE + 22))
+
 extern SPI_HandleTypeDef hspi1;
 
 extern uint8_t spi_was_changed;
@@ -50,6 +58,7 @@ void nrf24_deinit()
   spi_was_changed = 1;
 }
 
+/* 
 void my_config(uint8_t channel)
 {
   // Set RF channel
@@ -74,11 +83,35 @@ void my_config(uint8_t channel)
     nrf24_configRegister(DYNPD,(1<<DPL_P0)|(0<<DPL_P1)|(0<<DPL_P2)|(0<<DPL_P3)|(0<<DPL_P4)|(0<<DPL_P5));
   nrf24_configRegister(FEATURE,(1<<EN_DPL)|(1<<EN_ACK_PAY));
   nrf24_featureActivate();
-  
 
   nrf24_powerUpRx();
 }
+*/
+void my_config(void)
+{
+  uint8_t bwconf;
+  
+  nrf24_configRegister(RF_CH, EE_NRF_CHAN);
 
+  if (EE_NRF_BW == 0) 
+    bwconf = (0<<RF_DR_HIGH)|(1<<RF_DR_LOW);
+  else if (EE_NRF_BW == 1)
+    bwconf = (0<<RF_DR_HIGH)|(0<<RF_DR_LOW);
+  else if (EE_NRF_BW == 2)
+    bwconf = (1<<RF_DR_HIGH)|(0<<RF_DR_LOW);
+  else
+    bwconf = (0<<RF_DR_HIGH)|(1<<RF_DR_LOW); // default to 250khz bw i guess
+
+  nrf24_configRegister(RF_SETUP, bwconf|((0x03)<<RF_PWR));
+  nrf24_configRegister(CONFIG, nrf24_CONFIG);
+  nrf24_configRegister(SETUP_RETR, ((EE_NRF_RETRY_DELAY & 0x0F) << ARD) | ((EE_NRF_RETRY_COUNT & 0x0F) << ARC));
+  nrf24_configRegister(EN_AA,(1<<ENAA_P0)|(0<<ENAA_P1)|(0<<ENAA_P2)|(0<<ENAA_P3)|(0<<ENAA_P4)|(0<<ENAA_P5));
+  nrf24_configRegister(EN_RXADDR,(1<<ERX_P0)|(0<<ERX_P1)|(0<<ERX_P2)|(0<<ERX_P3)|(0<<ERX_P4)|(0<<ERX_P5));
+  nrf24_configRegister(DYNPD,(1<<DPL_P0)|(0<<DPL_P1)|(0<<DPL_P2)|(0<<DPL_P3)|(0<<DPL_P4)|(0<<DPL_P5));
+  nrf24_configRegister(FEATURE,(1<<EN_DPL)|(1<<EN_ACK_PAY));
+  nrf24_featureActivate();
+  nrf24_powerUpRx();
+}
 
 /* Set the RX address */
 void nrf24_rx_address(uint8_t * adr, uint8_t pipe) 
@@ -343,8 +376,10 @@ void nrf24_featureActivate()
   nrf24_csn_digitalWrite(HIGH);
 }
 
-uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00};
-uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00};
+//uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00};
+//uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00};
+uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
+uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
 
 int send_radio_message(char *msg, uint8_t len)
 {
@@ -353,7 +388,7 @@ int send_radio_message(char *msg, uint8_t len)
   uint8_t ackpl[32];
   if (len > 32) return (0);
   nrf24_init();
-  my_config(7); 
+  my_config();
   nrf24_tx_address(tx_address);
   nrf24_rx_address(rx_address, RX_ADDR_P0);
 
@@ -404,7 +439,7 @@ void nrf_tx(void)
   char txbuf[32], ackpl[32];
   
   nrf24_init();
-  my_config(7); 
+  my_config(); 
   nrf24_tx_address(tx_address);
   nrf24_rx_address(rx_address, RX_ADDR_P0);
 
@@ -458,7 +493,7 @@ void nrf_rx(void)
   char ackplbuf[5];
   
   nrf24_init();
-  my_config(7);
+  my_config();
   nrf24_tx_address(tx_address);
   nrf24_rx_address(rx_address, RX_ADDR_P0);
 

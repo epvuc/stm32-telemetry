@@ -56,8 +56,12 @@ SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-#define EE_BATT_DIV_ADDR 0x0000
-#define EE_UNIT_ID_ADDR 0x0020
+// these need to be aligned on 32 bit boundaries
+#define EE_BATT_DIV (*(double *)(DATA_EEPROM_BASE + 0)) // 8 bytes long
+#define EE_INT_MIN  (*(uint8_t *)(DATA_EEPROM_BASE + 16))
+#define EE_INT_SEC  (*(uint8_t *)(DATA_EEPROM_BASE + 17))
+char *ee_unit_id =  (char *)(DATA_EEPROM_BASE + 32);
+// there are more defined in rf24.c
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,11 +107,6 @@ int main(void)
   uint32_t raw, count = 0;
   int retry_count = 0;
   double batt;
-  // these need to to be set in eeprom, and have to be on aligned addresses!
-  // You can write them with the "l062test" firmware. The addresses need to be
-  // aligned on 32 bit boundaries or the cpu will hang trying to access them!
-  double batt_divider = *(double *)(EE_BATT_DIV_ADDR + DATA_EEPROM_BASE);
-  char *unit_id = (EE_UNIT_ID_ADDR + DATA_EEPROM_BASE);
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -148,9 +147,9 @@ int main(void)
     raw = read_adc(0);
     vdiv_off();
     bme280_once(bmebuf, 22);
-    batt = raw / batt_divider;
+    batt = raw / EE_BATT_DIV;
     // 32 chars and still human-readable is a very tight fit.
-    snprintf(msgbuf, 32, "%s %s %.2f %u %x", unit_id, bmebuf, batt, (unsigned int)count++, retry_count & 0x0F);
+    snprintf(msgbuf, 32, "%s %s %.2f %u %x", ee_unit_id, bmebuf, batt, (unsigned int)count++, retry_count & 0x0F);
     if (count==100) count=0;
     retry_count = send_radio_message(msgbuf,strlen(msgbuf));
     // Go to sleep until next reading.
@@ -536,7 +535,7 @@ void RTC_AlarmConfig(void)
     }
 
   /*##-2- Configure the RTC Alarm peripheral #################################*/
-  /* Set Alarm to 02:20:30
+  /* Set Alarm to 00:INT_MIN:INT_SEC
      RTC Alarm Generation: Alarm on Hours, Minutes and Seconds */
   salarmstructure.Alarm = RTC_ALARM_A;
   salarmstructure.AlarmDateWeekDay = RTC_WEEKDAY_MONDAY;
@@ -544,9 +543,9 @@ void RTC_AlarmConfig(void)
   salarmstructure.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY;
   salarmstructure.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_NONE;
   salarmstructure.AlarmTime.TimeFormat = RTC_HOURFORMAT12_AM;
-  salarmstructure.AlarmTime.Hours = 0x02;
-  salarmstructure.AlarmTime.Minutes = 0x20;
-  salarmstructure.AlarmTime.Seconds = 0x31;
+  salarmstructure.AlarmTime.Hours = 0x00;
+  salarmstructure.AlarmTime.Minutes = EE_INT_MIN;
+  salarmstructure.AlarmTime.Seconds = EE_INT_SEC;
   salarmstructure.AlarmTime.SubSeconds = 0x00;
 
   if(HAL_RTC_SetAlarm_IT(&hrtc,&salarmstructure,RTC_FORMAT_BCD) != HAL_OK)
@@ -569,9 +568,9 @@ void RTC_AlarmConfig(void)
       Error_Handler();
     }
   /*##-4- Configure the Time #################################################*/
-  /* Set Time: 02:20:00 */
-  stimestructure.Hours = 0x02;
-  stimestructure.Minutes = 0x20;
+  /* Set Time: 00:00:00 */
+  stimestructure.Hours = 0x00;
+  stimestructure.Minutes = 0x00;
   stimestructure.Seconds = 0x00;
   stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
   stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE ;

@@ -87,9 +87,14 @@
 #define ARC         0 /* 4 bits */
 
 /* RF setup register */
+#define CONT_WAVE   7
+// 6 is reserved
+#define RF_DR_LOW   5
 #define PLL_LOCK    4
+#define RF_DR_HIGH  3
 #define RF_DR       3
-#define RF_PWR      1 /* 2 bits */   
+#define RF_PWR      1 /* 2 bits */
+
 
 /* general status register */
 #define RX_DR       6
