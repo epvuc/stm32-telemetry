@@ -422,7 +422,11 @@ int send_radio_message(char *msg, uint8_t len)
     payload_length = nrf24_payloadLength();
     nrf24_getData(ackpl, payload_length);
     // the contents of the ACK payload are in ackpl, length
-    // maybe do something with it...
+    // TODO:
+    // if the payload is 32 bytes, feed it to the AES coprocessor to decrypt,
+    // check CRC, check if first N chars match this board's eeprom unit_id
+    // then interpret as a command, either setting a config param directly
+    // or as a address,value,value,value... eeprom write.
   }
   nrf24_powerDown();
   return(status);
