@@ -347,10 +347,12 @@ void nrf24_featureActivate()
   nrf24_csn_digitalWrite(HIGH);
 }
 
-uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
-uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
-
-
+// uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
+// uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
+// let's try using the addr configured in eeprom... 
+// in eeprom it's left-padded out to 8 bytes, but we really only use 5 byte addrs
+uint8_t *tx_address = (uint8_t *)(DATA_EEPROM_BASE + EEADDR_NRF_ADDR + 3);
+uint8_t *rx_address = (uint8_t *)(DATA_EEPROM_BASE + EEADDR_NRF_ADDR + 3);
 
 int send_radio_message(char *msg, uint8_t len)
 {
@@ -362,8 +364,9 @@ int send_radio_message(char *msg, uint8_t len)
   nrf24_init();
   my_config();
   nrf24_tx_address(tx_address);
-  nrf24_rx_address(rx_address, RX_ADDR_P0);
-
+  //  nrf24_rx_address(rx_address, RX_ADDR_P0);
+  // pipe number is in eeprom conf numbered from 0, nrf24 starts from 0xA0.
+  nrf24_rx_address(rx_address, RX_ADDR_P0 + EE_NRF_PIPE);
   nrf24_send((uint8_t *)msg, len);
   while(nrf24_isSending() && (t++ < 100)) HAL_Delay(1);
   if (t>=100)  {
