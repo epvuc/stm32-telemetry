@@ -43,6 +43,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdlib.h>
+#include "config_eeprom.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -57,10 +58,7 @@ SPI_HandleTypeDef hspi1;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 // these need to be aligned on 32 bit boundaries
-#define EE_BATT_DIV (*(double *)(DATA_EEPROM_BASE + 0)) // 8 bytes long
-#define EE_INT_MIN  (*(uint8_t *)(DATA_EEPROM_BASE + 16))
-#define EE_INT_SEC  (*(uint8_t *)(DATA_EEPROM_BASE + 17))
-char *ee_unit_id =  (char *)(DATA_EEPROM_BASE + 32);
+char *ee_unit_id =  (char *)(DATA_EEPROM_BASE + EEADDR_UNIT_ID);
 // there are more defined in rf24.c
 /* USER CODE END PV */
 

@@ -13,16 +13,13 @@
 */
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 #include "nrf24.h"
 #include "stm32l0xx_hal.h"
-
 // config settings stored in eeprom
+#include "config_eeprom.h"
 char *ee_nrf_addr = (char *)(DATA_EEPROM_BASE + 8); // 8 bytes long
-#define EE_NRF_CHAN (*(uint8_t *)(DATA_EEPROM_BASE + 18))
-#define EE_NRF_PIPE (*(uint8_t *)(DATA_EEPROM_BASE + 19))
-#define EE_NRF_BW   (*(uint8_t *)(DATA_EEPROM_BASE + 20))
-#define EE_NRF_RETRY_COUNT (*(uint8_t *)(DATA_EEPROM_BASE + 21))
-#define EE_NRF_RETRY_DELAY (*(uint8_t *)(DATA_EEPROM_BASE + 22))
+extern char *ee_unit_id;
 
 extern SPI_HandleTypeDef hspi1;
 
@@ -32,6 +29,9 @@ void nrf24_set_ack_payload(uint8_t pipe, uint8_t *buf, uint8_t len);
 void nrf24_featureActivate();
 void led_on(void);
 void led_off(void);
+// from misc.c:
+void ee_set_interval(uint8_t min, uint8_t sec);
+uint8_t unhex(char h, char l);
 
 uint8_t spi_transfer(uint8_t dat)
 {
@@ -350,12 +350,13 @@ void nrf24_featureActivate()
 uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
 uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
 
-extern char *ee_unit_id;
+
 
 int send_radio_message(char *msg, uint8_t len)
 {
   int t=0;
   uint8_t status, payload_length;
+  uint8_t int_min, int_sec;
   uint8_t ackpl[32];
   if (len > 32) len = 32;
   nrf24_init();
@@ -386,18 +387,35 @@ int send_radio_message(char *msg, uint8_t len)
     led_on(); HAL_Delay(20); led_off(); HAL_Delay(150);
     led_on(); HAL_Delay(20); led_off();
   } 
-  status = nrf24_retransmissionCount();
-  // this is how many tries it took to get through
+  status = nrf24_retransmissionCount();  // this is how many tries it took to get through
+
+  // From here, we've already sent our data packet. The rest is just to see if the receiving
+  // end sent us an ACK payload, and if so, if we want to do something with it. 
   if (nrf24_dataReady()) {
     // the recipient had a return payload for us! ooooh!
     payload_length = nrf24_payloadLength();
     nrf24_getData(ackpl, payload_length);
     // the contents of the ACK payload are in ackpl, length
-    if(payload_length >= 2) {
-      // i guess do something here, for now just respond with a message
-      if(strncmp(ackpl, ee_unit_id, 2) == 0) {
-	snprintf(ackpl, 32, "%s_GOT_IT!\0", ee_unit_id);
-	nrf24_send(ackpl, strlen(ackpl));
+    // for now, just interpret a command to set the wakeup interval
+    if(payload_length > 7) {
+      if(strncmp((char *)ackpl, ee_unit_id, 2) == 0) {
+	// expect command format IMMSS where MM and SS are BCD 
+	// You can lock yourself out for a long time if you set this wrong.
+	// nfi what happens if you set it to 0, 0. 
+	if(ackpl[3] == 'I') { 
+	  int_min = unhex(ackpl[4], ackpl[5]);
+	  int_sec = unhex(ackpl[6], ackpl[7]);
+	  if ((int_min+int_sec) > 0) { 
+	    ee_set_interval(int_min, int_sec);
+	    snprintf((char *)ackpl, 32, "%s_int_set_%02xm_%02xs", ee_unit_id, EE_INT_MIN, EE_INT_SEC);
+	  } else {
+	    snprintf((char *)ackpl, 32, "%s_int_set_bad_param", ee_unit_id);
+	  }
+	} else {
+	  snprintf((char *)ackpl, 32, "%s_GOT_IT!", ee_unit_id);
+	}
+	// make sure you don't make this > 32 chars. snprintf will force a null terminator but it'll truncate
+	nrf24_send(ackpl, strlen((char *)ackpl));
 	t=0; while(nrf24_isSending() && (t++ < 100)) HAL_Delay(1);
       }
     }

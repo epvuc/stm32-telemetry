@@ -73,6 +73,7 @@ Src/stm32l0xx_hal_msp.c \
 Src/system_stm32l0xx.c \
 Src/stm32l0xx_it.c \
 Src/main.c \
+Src/misc.c \
 Src/bme280.c Src/sup.c \
 Src/nrf24.c Src/radioPinFunctions.c
 
