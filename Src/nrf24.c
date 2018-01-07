@@ -58,35 +58,6 @@ void nrf24_deinit()
   spi_was_changed = 1;
 }
 
-/* 
-void my_config(uint8_t channel)
-{
-  // Set RF channel
-  nrf24_configRegister(RF_CH,channel);
-
-  // 1 Mbps, TX gain: 0dbm
-  nrf24_configRegister(RF_SETUP, (0<<RF_DR)|((0x03)<<RF_PWR));
-
-  // CRC enable, 2 byte CRC length
-  nrf24_configRegister(CONFIG, nrf24_CONFIG);
-
-  // Auto Acknowledgment
-  nrf24_configRegister(EN_AA,(1<<ENAA_P0)|(0<<ENAA_P1)|(0<<ENAA_P2)|(0<<ENAA_P3)|(0<<ENAA_P4)|(0<<ENAA_P5));
-
-  // Enable RX addresses
-  nrf24_configRegister(EN_RXADDR,(1<<ERX_P0)|(0<<ERX_P1)|(0<<ERX_P2)|(0<<ERX_P3)|(0<<ERX_P4)|(0<<ERX_P5));
-
-  // Auto retransmit delay: 1000 us and Up to 15 retransmit trials
-  nrf24_configRegister(SETUP_RETR,(0x04<<ARD)|(0x0F<<ARC));
-
-  // Dynamic length configurations: No dynamic length
-    nrf24_configRegister(DYNPD,(1<<DPL_P0)|(0<<DPL_P1)|(0<<DPL_P2)|(0<<DPL_P3)|(0<<DPL_P4)|(0<<DPL_P5));
-  nrf24_configRegister(FEATURE,(1<<EN_DPL)|(1<<EN_ACK_PAY));
-  nrf24_featureActivate();
-
-  nrf24_powerUpRx();
-}
-*/
 void my_config(void)
 {
   uint8_t bwconf;
@@ -376,10 +347,10 @@ void nrf24_featureActivate()
   nrf24_csn_digitalWrite(HIGH);
 }
 
-//uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00};
-//uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00};
 uint8_t tx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
 uint8_t rx_address[5] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01};
+
+extern char *ee_unit_id;
 
 int send_radio_message(char *msg, uint8_t len)
 {
@@ -422,11 +393,14 @@ int send_radio_message(char *msg, uint8_t len)
     payload_length = nrf24_payloadLength();
     nrf24_getData(ackpl, payload_length);
     // the contents of the ACK payload are in ackpl, length
-    // TODO:
-    // if the payload is 32 bytes, feed it to the AES coprocessor to decrypt,
-    // check CRC, check if first N chars match this board's eeprom unit_id
-    // then interpret as a command, either setting a config param directly
-    // or as a address,value,value,value... eeprom write.
+    if(payload_length >= 2) {
+      // i guess do something here, for now just respond with a message
+      if(strncmp(ackpl, ee_unit_id, 2) == 0) {
+	snprintf(ackpl, 32, "%s_GOT_IT!\0", ee_unit_id);
+	nrf24_send(ackpl, strlen(ackpl));
+	t=0; while(nrf24_isSending() && (t++ < 100)) HAL_Delay(1);
+      }
+    }
   }
   nrf24_powerDown();
   return(status);
