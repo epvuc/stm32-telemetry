@@ -386,7 +386,7 @@ int send_radio_message(char *msg, uint8_t len)
   int t=0;
   uint8_t status, payload_length;
   uint8_t ackpl[32];
-  if (len > 32) return (0);
+  if (len > 32) len = 32;
   nrf24_init();
   my_config();
   nrf24_tx_address(tx_address);
@@ -404,7 +404,7 @@ int send_radio_message(char *msg, uint8_t len)
     // yay, it worked. (blink once)
     led_on(); HAL_Delay(10); led_off();
   } else if (status == NRF24_MESSAGE_LOST) {
-    // sad day, message lost (blink red)
+    // sad day, message lost (blink twice)
     // this one delay accounts for the majority of the total power use and months or years of run time, haha
     // just so you can see a double flash if it failed. 
     led_on(); HAL_Delay(10); led_off(); HAL_Delay(100);

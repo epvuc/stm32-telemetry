@@ -102,7 +102,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  char msgbuf[32];
+  char msgbuf[33];
   char bmebuf[32];
   uint32_t raw, count = 0;
   int retry_count = 0;
@@ -149,9 +149,12 @@ int main(void)
     bme280_once(bmebuf, 22);
     batt = raw / EE_BATT_DIV;
     // 32 chars and still human-readable is a very tight fit.
-    snprintf(msgbuf, 32, "%s %s %.2f %u %x", ee_unit_id, bmebuf, batt, (unsigned int)count++, retry_count & 0x0F);
+    // snprintf will null-terminate, but we will discard the null since we are
+    // sending explicitly sized packets.
+    memset(msgbuf, 0, 33); // safety.
+    snprintf(msgbuf, 33, "%s %s %.2f %u %x", ee_unit_id, bmebuf, batt, (unsigned int)count++, retry_count & 0x0F);
     if (count==100) count=0;
-    retry_count = send_radio_message(msgbuf,strlen(msgbuf));
+    retry_count = send_radio_message(msgbuf,strlen(msgbuf)<=32?strlen(msgbuf):32);
     // Go to sleep until next reading.
     ADC_Desequence_Powerhungry_Channels();
     HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);

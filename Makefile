@@ -90,8 +90,8 @@ PERIFLIB_SOURCES =
 #######################################
 # binaries
 #######################################
-# BINPATH = /home/eric/Desktop/gcc/gcc-arm-none-eabi-6-2017-q2-update/bin
-BINPATH = /usr/bin
+BINPATH = /home/eric/Desktop/gcc/gcc-arm-none-eabi-6-2017-q2-update/bin
+# BINPATH = /usr/bin
 PREFIX = arm-none-eabi-
 CC = $(BINPATH)/$(PREFIX)gcc
 AS = $(BINPATH)/$(PREFIX)gcc -x assembler-with-cpp
