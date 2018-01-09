@@ -404,12 +404,11 @@ int send_radio_message(char *msg, uint8_t len)
       if(strncmp((char *)ackpl, ee_unit_id, 2) == 0) {
 	// expect command format IMMSS where MM and SS are BCD 
 	// You can lock yourself out for a long time if you set this wrong.
-	// nfi what happens if you set it to 0, 0. 
 	if(ackpl[3] == 'I') { 
 	  int_min = unhex(ackpl[4], ackpl[5]);
 	  int_sec = unhex(ackpl[6], ackpl[7]);
-	  if ((int_min+int_sec) > 0) { 
-	    ee_set_interval(int_min, int_sec);
+	  if ((int_min+int_sec) > 0) { // nfi what it does if you set the alarm for zero seconds, lets not find out
+	    ee_set_interval(int_min, int_sec); // in misc.c
 	    snprintf((char *)ackpl, 32, "%s_int_set_%02xm_%02xs", ee_unit_id, EE_INT_MIN, EE_INT_SEC);
 	  } else {
 	    snprintf((char *)ackpl, 32, "%s_int_set_bad_param", ee_unit_id);
