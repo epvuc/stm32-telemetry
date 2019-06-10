@@ -1,0 +1,127 @@
+Update 11/20/2017
+
+The new version of CubeMX "supports" Makefile natively. Except it writes broken 
+makefiles.  And the generated code is way bigger, even with the same libraries. WTF??
+
+1. run /home/eric/STM32CubeMX/STM32CubeMX, set up chip config
+
+2. in Project->Settings, set Toolchain to "Makefile" and uncheck "Generate Under Root"
+
+3. Click Project->Generate Code
+
+4. Edit Makefile to remove all the duplicate entries for the C source files, and
+remove the *.c source file names from the directory search path list. WTF??
+
+5. make
+
+
+Other makefile changes:
+# Don't whine about wchar_t sizes
+LDFLAGS += -Wl,--no-wchar-size-warning
+# Use bigger printf with float types
+LDFLAGS += -lrdimon -u _printf_float 
+
+
+Note: if you are building with a USB CDC endpoint, the new software defaults to 
+2048 byte RX and TX buffers, instead of the old 4 byte buffers, which is set in the
+"USB MIDDLEWARES" config section in CubeMX, or as APP_{T,R}X_DATA_SIZE in usbd_cdc_if.c
+
+
+
+
+Update 11/17/2017
+
+1. run /home/eric/STM32CubeMX/STM32CubeMX, set up chip config
+
+2. in Project->Settings, set Toolchain to "SW4STM32" and uncheck "Generate Under Root"
+
+3. Click Project->Generate Code
+
+4. cd SW4STM32; ln -s projname "projname Configuration"; cd ..
+
+5. ~/build/CubeMX2Makefile/CubeMX2Makefile.py .
+
+6. edit Makefile and change PARENT-1-PROJECT_LOC to SW4STM32
+
+7. make
+
+
+
+Updates 2/5/2016 for new versions of stm32f1 cube and new cubeMX. 
+
+CubeMX 4.19.0 is /home/eric/STM32CubeMX/STM32CubeMX and is now a linux executable.
+Latest STM32Cube libraries for STM32F1 are in 
+~/STM32Cube/Repository/STM32Cube_FW_F1_V1.4.0
+and CubeMX knows where to find them. 
+
+
+After configuring the chip, 
+click "Generate Code" 
+
+mkdir -p SW4STM32/"xxProjnamexx Configuration"
+wherever .project, .cproject, and STMxxxxxx.ld end up, put them in that dir.
+
+You have to go into the generated SW4STM32 dir and symlink Projname to "Projname Configuration"
+
+then run ~/build/CubeMX2Makefile/CubeMX2Makefile.py .
+
+The latest git version of CubeMX2Makefile doesn't work, it generates a stub Makefile
+with no source files listed. 
+
+Don't forget to add your own added source files to the generated Makefile.
+
+Don't forget to put your own changes to the generated files inside the /* USER CODE */
+comment tags, so CubeMX will preserve it when it recopies source files. 
+
+CubeMX2Makefile's Makefile gets the ASM_SOURCES path wrong for the asm startup
+file; change "PARENT-1-PROJECT_LOC" to "SW4STM32" under ASM_SOURCES
+
+The generated Makefile sets -O0, which is probably not helpful.
+
+Append the "program" and "swdio" targets to the end of the Makefile, too:
+program:
+        stm32flash -w build/$(TARGET).bin -v -g 0x0 /dev/ttyUSB0
+
+swdio:
+        sudo st-flash write build/$(TARGET).bin 0x8000000
+
+
+
+
+this is pretty awesome. 
+
+1. run "java -jar ~/STMicroelectronics/STM32Cube/STM32CubeMX/STM32CubeMX.jar"
+   This lets you generate ALL the boilerplate for a project using any STMicro CPU. 
+   You can use ~/uc/arm/new407/new407.ioc (project file) as a starting point for 
+   f407 projects, but it's all very easy. Make sure USB clock is 48mhz. Assign 
+   peripheral pins wherever you want by clicking on the pins. Make sure to enable
+   "Serial Wire Debug" under "Sys" to retain the ability to reflash using stlink.
+   If you forget, just reset the board while holding pin BOOT0 high, then reflash.
+
+2. Run ~/build/CubeMX2Makefile/CubeMX2Makefile.py projectdir 
+   This turns the output of CubeMX into a Makefile and whatever else is needed. 
+
+3. If you're doing a USB serial project, you have to fix one supplied file with an 
+   error in it: Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
+   change #include "USBD_CDC.h" to #include "usbd_cdc.h".
+
+4. Most peripherals need a handle variable allocated, and have a HAL_*_MspInit()
+   function you need to call on that handle variable, before you can use them. 
+
+5. If you want a usb serial port, add in "my_cdc_vcp.[ch]" which implements _write
+   for printf and various getchar-like things. If you use printf, you need to set
+   "stdout" nonbuffering with "setvbuf( stdout, 0, _IONBF, 0 );" before using it.
+   Also replace the stub usbd_cdc_if.c with the one from new407, which has all the
+   important parts implemented. It should be hardware independent. 
+
+6. Change usbd_desc.c to set all the USB parameters the device will present to a
+   USB host. To avoid compiler warnings, all the strings should be cast to 
+   (uint8_t *) which STM32CubeMX does not do. It works fine either way. 
+
+7. make
+
+8. sudo st-flash write build/myproject.bin 0x8000000
+
+9. ???
+
+10. PROFITS!!
